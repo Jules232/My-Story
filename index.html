@@ -295,8 +295,9 @@
             }
         };
 
-        // --- APPEL DE L'API AVEC EXPONENTIAL BACKOFF (RÈGLE DU PROMPT) ---
+        // --- APPEL DE L'API AVEC EXPONENTIAL BACKOFF ---
         async function fetchGeminiWithBackoff(promptText, systemInstruction, retries = 5, delay = 1000) {
+            // Utilisation du modèle de production hautement disponible gemini-2.5-flash-preview-09-2025
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${userApiKey}`;
             
             const payload = {
@@ -347,7 +348,9 @@
                     });
 
                     if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
+                        const errorDetails = await response.json().catch(() => ({}));
+                        const errMsg = errorDetails.error?.message || `Erreur HTTP ${response.status}`;
+                        throw new Error(errMsg);
                     }
 
                     const data = await response.json();
@@ -355,9 +358,10 @@
                     if (textResponse) {
                         return JSON.parse(textResponse);
                     } else {
-                        throw new Error("Réponse de l'IA vide.");
+                        throw new Error("La réponse renvoyée par l'API Gemini est vide.");
                     }
                 } catch (error) {
+                    console.warn(`Tentative ${i + 1} échouée:`, error.message);
                     if (i === retries - 1) throw error; // Si c'était la dernière tentative, propager l'erreur
                     await new Promise(resolve => setTimeout(resolve, delay));
                     delay *= 2; // Doubler le délai à chaque tentative
@@ -369,6 +373,9 @@
 
         // Lancer une nouvelle histoire
         async function startAdventure(selectedGenre) {
+            // On s'assure de recharger la clé la plus récente du localStorage
+            userApiKey = localStorage.getItem(apiKeyStorageKey) || "";
+
             if (!userApiKey) {
                 openApiModal();
                 showError("Veuillez configurer votre clé API Gemini avant de lancer l'aventure.");
@@ -432,8 +439,8 @@
                 document.getElementById("turn-counter").innerText = gameState.history.length;
 
             } catch (error) {
-                console.error("Erreur Gemini:", error);
-                showError("Impossible de générer la suite de l'histoire. Veuillez vérifier votre connexion et l'état de votre clé API.");
+                console.error("Erreur Gemini brute:", error);
+                showError(`Erreur API Gemini : ${error.message}. Vérifiez que votre clé est correcte et active.`);
                 // Ré-afficher les choix si possible ou proposer un bouton de secours
                 showStoryLoader(false);
                 fallbackResetUI();
@@ -653,6 +660,8 @@
 
         // --- CRÉATION DE L'ATMOSPHÈRE DE DÉPART AU CHARGEMENT ---
         window.onload = function() {
+            // S'assurer de toujours synchroniser avec le localStorage sur rechargement de page
+            userApiKey = localStorage.getItem(apiKeyStorageKey) || "";
             updateApiStatusIndicator();
             applyDynamicAtmosphere("#581c87", "#311042");
         };

@@ -289,7 +289,8 @@
                 }
             }
 
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${userApiKey}`;
+            // Utilisation du modèle stable officiel universellement disponible gemini-2.5-flash
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${userApiKey}`;
             
             // On fusionne les instructions système et le contexte dans un seul message (très robuste)
             // On demande spécifiquement le format JSON dans le texte sans utiliser de "responseSchema" qui peut bugger
@@ -370,7 +371,7 @@ ${contextPrompt}`;
             userApiKey = localStorage.getItem(apiKeyStorageKey) || "";
 
             if (!userApiKey) {
-                userApiKey = prompt("Clé API Gemini requise pour lancer l'aventure.\n\n1. Allez sur le site : https://aistudio.google.com/app/apikey\n2. Générez une clé gratuitement.\n3. Collez-la ci-dessous :");
+                userApiKey = prompt("Clé API Gemini requise pour lancer l'aventure.\n\n1. Allez sur le site : [https://aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)\n2. Générez une clé gratuitement.\n3. Collez-la ci-dessous :");
                 if (userApiKey) {
                     localStorage.setItem(apiKeyStorageKey, userApiKey);
                     updateApiStatusIndicator();
@@ -540,6 +541,14 @@ ${contextPrompt}`;
             startAdventure(genreName);
         }
 
+        // --- ONBOARDING AUTOMATIQUE ---
+        // Cette fonction ouvre de manière élégante le modal de clé API si aucune clé n'est configurée au départ
+        function checkOnboarding() {
+            if (!userApiKey) {
+                openApiModal();
+            }
+        }
+
         function selectCustomGenre() {
             const customInput = document.getElementById("custom-genre");
             const value = customInput.value.trim();
@@ -649,6 +658,8 @@ ${contextPrompt}`;
             userApiKey = localStorage.getItem(apiKeyStorageKey) || "";
             updateApiStatusIndicator();
             applyDynamicAtmosphere("#581c87", "#311042");
+            // Vérification intelligente et ouverture du modal si clé manquante
+            checkOnboarding();
         };
     </script>
 </body>

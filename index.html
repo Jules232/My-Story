@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sagas Infinies - Histoires Interactives IA</title>
+    <!-- Tailwind CSS pour un design ultra moderne et fluide -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts pour des typographies immersives -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome pour les icônes -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            transition: background 1.5s ease, color 1.5s ease;
+        }
+        .font-title {
+            font-family: 'Cinzel', serif;
+        }
+        /* Custom scrollbar pour garder l'esthétique propre */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-full flex flex-col justify-between relative overflow-x-hidden selection:bg-purple-500/30">
+
+    <!-- Effet de halo lumineux en arrière-plan -->
+    <div id="ambient-glow" class="fixed -top-40 -left-40 w-96 h-96 rounded-full bg-purple-900/20 blur-[120px] pointer-events-none transition-all duration-[2000ms] z-0"></div>
+    <div id="ambient-glow-right" class="fixed -bottom-40 -right-40 w-96 h-96 rounded-full bg-indigo-900/20 blur-[120px] pointer-events-none transition-all duration-[2000ms] z-0"></div>
+
+    <!-- HEADER -->
+    <header class="border-b border-white/10 backdrop-blur-md bg-slate-950/60 sticky top-0 z-40 transition-colors duration-1000">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="resetToHome()">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-600 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-500/20">
+                    <i class="fa-solid fa-wand-magic-sparkles text-white text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="font-title text-xl font-black tracking-wider bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">SAGAS INFINIES</h1>
+                    <p class="text-[10px] text-slate-400 tracking-widest uppercase">Propulsé par Gemini</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-3">
+                <!-- Statut de la clé API -->
+                <button id="btn-api-modal" onclick="openApiModal()" class="flex items-center space-x-2 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 transition text-sm">
+                    <span id="api-status-dot" class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+                    <span id="api-status-text" class="hidden sm:inline text-xs text-slate-300">Clé API absente</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTAINER -->
+    <main class="flex-grow max-w-5xl w-full mx-auto px-4 py-8 relative z-10 flex flex-col justify-center">
+        
+        <!-- ÉCRAN D'ACCUEIL : Configuration et choix de l'aventure -->
+        <section id="screen-setup" class="space-y-8 animate-fade-in">
+            <div class="text-center space-y-4 max-w-2xl mx-auto">
+                <span class="px-3 py-1 rounded-full border border-purple-500/30 bg-purple-500/10 text-xs font-semibold text-purple-400 uppercase tracking-widest">Aventure Générative Unique</span>
+                <h2 class="font-title text-4xl md:text-5xl font-black text-white leading-tight">Créez votre propre destin littéraire</h2>
+                <p class="text-slate-400 text-base md:text-lg">
+                    Choisissez votre atmosphère, configurez vos préférences, et laissez l'intelligence artificielle concevoir un récit sur-mesure dont vous êtes le seul maître.
+                </p>
+            </div>
+
+            <!-- Configuration Clé API intégrée si absente -->
+            <div id="setup-api-banner" class="max-w-xl mx-auto p-5 rounded-2xl border border-amber-500/30 bg-amber-500/5 backdrop-blur-sm space-y-3 hidden">
+                <div class="flex items-start space-x-3">
+                    <div class="p-2 rounded-lg bg-amber-500/20 text-amber-400 mt-0.5">
+                        <i class="fa-solid fa-key"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-white text-sm">Clé API Gemini requise</h4>
+                        <p class="text-xs text-slate-300 mt-1">Pour jouer, vous devez utiliser votre propre clé API Google Gemini. Elle est gratuite, ultra-rapide à obtenir, et reste stockée localement dans votre propre navigateur.</p>
+                    </div>
+                </div>
+                <div class="flex space-x-2">
+                    <input type="password" id="input-api-key-setup" placeholder="Copiez votre clé AIzaSy..." class="flex-grow px-3 py-1.5 rounded-lg bg-slate-900 border border-white/10 text-sm focus:outline-none focus:border-amber-500 text-white">
+                    <button onclick="saveSetupKey()" class="px-4 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold rounded-lg text-sm transition">Valider</button>
+                </div>
+                <div class="text-right">
+                    <a href="https://aistudio.google.com/" target="_blank" class="text-[11px] text-amber-400 underline hover:text-amber-300"><i class="fa-solid fa-arrow-up-right-from-square mr-1"></i>Obtenir une clé gratuite sur Google AI Studio</a>
+                </div>
+            </div>
+
+            <!-- Grille de sélection des thèmes -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto pt-4">
+                <!-- Thème Horreur -->
+                <button onclick="selectGenre('Horreur Cosmique')" class="group relative text-left p-6 rounded-2xl border border-white/10 bg-slate-900/50 hover:bg-red-950/20 hover:border-red-500/30 transition-all duration-300 hover:-translate-y-1 overflow-hidden">
+                    <div class="absolute top-0 right-0 w-24 h-24 bg-red-500/10 rounded-full blur-2xl group-hover:bg-red-500/20 transition-all"></div>
+                    <div class="w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500 text-xl mb-4 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-ghost"></i>
+                    </div>
+                    <h3 class="font-title text-xl font-bold text-white mb-2 group-hover:text-red-400 transition-colors">Horreur Cosmique</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">Faites face à l'indicible, explorez des manoirs oubliés et survivez à des entités ancestrales tapies dans l'ombre.</p>
+                </button>
+
+                <!-- Thème Fantasy -->
+                <button onclick="selectGenre('High Fantasy')" class="group relative text-left p-6 rounded-2xl border border-white/10 bg-slate-900/50 hover:bg-purple-950/20 hover:border-purple-500/30 transition-all duration-300 hover:-translate-y-1 overflow-hidden">
+                    <div class="absolute top-0 right-0 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl group-hover:bg-purple-500/20 transition-all"></div>
+                    <div class="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-500 text-xl mb-4 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-dragon"></i>
+                    </div>
+                    <h3 class="font-title text-xl font-bold text-white mb-2 group-hover:text-purple-400 transition-colors">Heroic Fantasy</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">Embrassez la magie runique, explorez des royaumes déchus, et forgez votre légende l'épée à la main.</p>
+                </button>
+
+                <!-- Thème Science-Fiction -->
+                <button onclick="selectGenre('Cyberpunk / SF')" class="group relative text-left p-6 rounded-2xl border border-white/10 bg-slate-900/50 hover:bg-cyan-950/20 hover:border-cyan-500/30 transition-all duration-300 hover:-translate-y-1 overflow-hidden">
+                    <div class="absolute top-0 right-0 w-24 h-24 bg-cyan-500/10 rounded-full blur-2xl group-hover:bg-cyan-500/20 transition-all"></div>
+                    <div class="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-500 text-xl mb-4 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-user-astronaut"></i>
+                    </div>
+                    <h3 class="font-title text-xl font-bold text-white mb-2 group-hover:text-cyan-400 transition-colors">Sombres Horizons (SF)</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">Plongez dans des mégapoles néonisées ou dérivez à bord de stations spatiales abandonnées infestées de secrets.</p>
+                </button>
+            </div>
+
+            <!-- Personnalisation d'histoire sur mesure -->
+            <div class="max-w-xl mx-auto p-6 rounded-2xl border border-white/5 bg-slate-900/30 backdrop-blur-sm space-y-4">
+                <h4 class="text-white font-semibold text-center flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-pen-nib text-purple-400"></i> Ou personnalisez votre propre univers :
+                </h4>
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <input type="text" id="custom-genre" placeholder="Ex: Enquête policière occulte en 1890, Survie post-apocalyptique..." class="flex-grow px-4 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 transition">
+                    <button onclick="selectCustomGenre()" class="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 font-bold rounded-xl text-sm text-white transition shadow-lg shadow-purple-500/20 whitespace-nowrap">
+                        Lancer mon aventure
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ÉCRAN DE JEU (HISTOIRE EN COURS) -->
+        <section id="screen-game" class="hidden space-y-8 max-w-4xl mx-auto animate-fade-in">
+            
+            <!-- Barre d'état de l'aventure -->
+            <div class="flex justify-between items-center bg-slate-900/40 border border-white/10 p-3 rounded-2xl backdrop-blur-sm">
+                <div class="flex items-center space-x-3">
+                    <div id="game-genre-badge" class="px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider text-white">
+                        HISTOIRE
+                    </div>
+                    <div class="h-4 w-px bg-white/10"></div>
+                    <div class="text-xs text-slate-400">
+                        Décisions prises : <span id="turn-counter" class="font-bold text-white">0</span>
+                    </div>
+                </div>
+                <button onclick="confirmReset()" class="text-xs text-slate-400 hover:text-red-400 transition flex items-center space-x-1.5 px-2 py-1 rounded hover:bg-white/5">
+                    <i class="fa-solid fa-rotate-left"></i>
+                    <span>Recommencer</span>
+                </button>
+            </div>
+
+            <!-- Panneau de récit principal -->
+            <div class="bg-slate-900/50 border border-white/10 rounded-3xl p-6 md:p-8 space-y-6 backdrop-blur-md shadow-2xl relative overflow-hidden transition-colors duration-1000">
+                
+                <!-- Ornements graphiques de coin -->
+                <div class="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-white/10 rounded-tl-3xl pointer-events-none"></div>
+                <div class="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-white/10 rounded-br-3xl pointer-events-none"></div>
+
+                <!-- Texte narratif généré -->
+                <div id="story-content" class="prose prose-invert max-w-none text-slate-200 text-base md:text-lg leading-relaxed space-y-4 font-normal tracking-wide">
+                    <!-- Rempli par l'IA -->
+                </div>
+
+                <!-- Indicateur de chargement stylisé -->
+                <div id="story-loader" class="hidden flex flex-col items-center justify-center py-12 space-y-4">
+                    <div class="relative w-16 h-16">
+                        <div class="absolute inset-0 rounded-full border-4 border-purple-500/20 animate-pulse"></div>
+                        <div class="absolute inset-0 rounded-full border-4 border-t-purple-500 animate-spin"></div>
+                    </div>
+                    <div class="text-center space-y-1">
+                        <p class="text-sm font-semibold text-purple-400 animate-pulse">L'histoire s'écrit...</p>
+                        <p class="text-[11px] text-slate-500">Gemini assemble la suite de votre destin</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Conteneur des Choix (Cases d'actions) -->
+            <div class="space-y-4">
+                <h4 class="text-xs font-bold tracking-widest text-slate-400 uppercase text-center flex items-center justify-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+                    Que décidez-vous de faire ?
+                    <span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+                </h4>
+
+                <div id="choices-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Rempli dynamiquement avec des cartes interactives -->
+                </div>
+            </div>
+        </section>
+
+        <!-- BANDEAU DE NOTIFICATION D'ERREUR -->
+        <div id="error-toast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 max-w-md w-full px-4">
+            <div class="bg-red-950 border border-red-500/40 p-4 rounded-xl shadow-2xl flex items-start space-x-3">
+                <div class="p-2 bg-red-500/20 text-red-400 rounded-lg">
+                    <i class="fa-solid fa-circle-exclamation text-lg"></i>
+                </div>
+                <div class="flex-grow">
+                    <h5 class="text-white font-bold text-sm">Une erreur est survenue</h5>
+                    <p id="error-toast-text" class="text-xs text-red-200 mt-0.5">Impossible de contacter l'IA. Veuillez vérifier votre clé API.</p>
+                </div>
+                <button onclick="hideError()" class="text-red-400 hover:text-white transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="border-t border-white/5 py-4 bg-slate-950/40 text-center text-xs text-slate-500 relative z-10">
+        <p>© 2026 Sagas Infinies. Vos histoires sont éphémères et durent pour toujours.</p>
+    </footer>
+
+    <!-- MODAL DE CONFIGURATION DE CLÉ API -->
+    <div id="modal-api" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4 bg-slate-950/80 backdrop-blur-md">
+        <div class="bg-slate-900 border border-white/10 w-full max-w-md rounded-2xl p-6 space-y-4 shadow-2xl relative">
+            <button onclick="closeApiModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white transition">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+
+            <div class="space-y-2">
+                <div class="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 text-xl">
+                    <i class="fa-solid fa-key"></i>
+                </div>
+                <h3 class="font-title text-xl font-bold text-white">Clé API Google Gemini</h3>
+                <p class="text-xs text-slate-400">Le site fonctionne sans serveur intermédiaire. Votre clé reste strictement locale et privée.</p>
+            </div>
+
+            <div class="space-y-3 pt-2">
+                <div class="space-y-1.5">
+                    <label class="text-xs text-slate-300 font-semibold">Votre clé API :</label>
+                    <input type="password" id="input-api-key-modal" placeholder="Insérez votre clé AIzaSy..." class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-white/10 text-sm focus:outline-none focus:border-purple-500 text-white font-mono">
+                </div>
+
+                <div class="bg-slate-950 p-3 rounded-lg border border-white/5 space-y-1">
+                    <p class="text-[11px] text-slate-400">Comment obtenir une clé gratuite ?</p>
+                    <ol class="list-decimal list-inside text-[11px] text-slate-300 space-y-1">
+                        <li>Rendez-vous sur <a href="https://aistudio.google.com/" target="_blank" class="text-purple-400 underline hover:text-purple-300">Google AI Studio</a>.</li>
+                        <li>Connectez-vous avec votre compte Google.</li>
+                        <li>Cliquez sur "Get API Key" puis générez-en une.</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="flex space-x-2 pt-2">
+                <button onclick="closeApiModal()" class="flex-1 py-2 rounded-xl border border-white/10 text-slate-300 hover:bg-white/5 transition text-sm">Annuler</button>
+                <button onclick="saveModalKey()" class="flex-1 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 font-semibold rounded-xl text-white transition text-sm">Sauvegarder</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CONFIRMATION RESET -->
+    <div id="modal-reset" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4 bg-slate-950/80 backdrop-blur-md">
+        <div class="bg-slate-900 border border-red-500/20 w-full max-w-sm rounded-2xl p-6 space-y-4 shadow-2xl">
+            <h3 class="font-title text-lg font-bold text-white">Recommencer l'aventure ?</h3>
+            <p class="text-xs text-slate-300">Vous allez perdre votre progression actuelle dans cette histoire. Êtes-vous sûr ?</p>
+            <div class="flex space-x-2 pt-2">
+                <button onclick="closeResetModal()" class="flex-1 py-2 rounded-xl border border-white/10 text-slate-300 hover:bg-white/5 transition text-sm">Continuer de jouer</button>
+                <button onclick="resetToHome()" class="flex-1 py-2 bg-red-600 hover:bg-red-700 font-semibold rounded-xl text-white transition text-sm">Recommencer</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- CONSTANTES ET CONFIGURATION ---
+        const apiKeyStorageKey = "sagas_infinies_gemini_key";
+        let userApiKey = localStorage.getItem(apiKeyStorageKey) || "";
+        
+        // État global du jeu
+        let gameState = {
+            genre: "",
+            history: [], // Stocke les tours de jeu pour donner du contexte à l'IA
+            turn: 0,
+            currentTheme: {
+                primary: "#6366f1", // indigo
+                bg: "bg-slate-950",
+                shadow: "shadow-indigo-500/20"
+            }
+        };
+
+        // --- APPEL DE L'API AVEC EXPONENTIAL BACKOFF (RÈGLE DU PROMPT) ---
+        async function fetchGeminiWithBackoff(promptText, systemInstruction, retries = 5, delay = 1000) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${userApiKey}`;
+            
+            const payload = {
+                contents: [{ parts: [{ text: promptText }] }],
+                systemInstruction: { parts: [{ text: systemInstruction }] },
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            text: { 
+                                type: "STRING", 
+                                description: "La narration de la suite de l'histoire, soignée, immersive, et rythmée, en français." 
+                            },
+                            ambient_color: { 
+                                type: "STRING", 
+                                description: "Une couleur dominante en format hexadécimal (ex: #7f1d1d pour rouge sang, #4c1d95 pour violet sombre) adaptée au ton narratif actuel." 
+                            },
+                            ambient_secondary: {
+                                type: "STRING",
+                                description: "Une couleur secondaire assortie en format hexadécimal."
+                            },
+                            choices: {
+                                type: "ARRAY",
+                                description: "Liste contenant exactement 2 à 4 choix possibles de décisions logiques pour le joueur.",
+                                items: {
+                                    type: "OBJECT",
+                                    properties: {
+                                        title: { type: "STRING", description: "Le titre court de l'action en quelques mots." },
+                                        impact: { type: "STRING", description: "Une petite phrase sur la conséquence ou l'impact supposé du choix." },
+                                        actionValue: { type: "STRING", description: "La commande d'action interne qui sera renvoyée à l'IA pour le prochain tour." }
+                                    },
+                                    required: ["title", "impact", "actionValue"]
+                                }
+                            }
+                        },
+                        required: ["text", "ambient_color", "ambient_secondary", "choices"]
+                    }
+                }
+            };
+
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(url, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (textResponse) {
+                        return JSON.parse(textResponse);
+                    } else {
+                        throw new Error("Réponse de l'IA vide.");
+                    }
+                } catch (error) {
+                    if (i === retries - 1) throw error; // Si c'était la dernière tentative, propager l'erreur
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    delay *= 2; // Doubler le délai à chaque tentative
+                }
+            }
+        }
+
+        // --- CYCLE DE JEU ---
+
+        // Lancer une nouvelle histoire
+        async function startAdventure(selectedGenre) {
+            if (!userApiKey) {
+                openApiModal();
+                showError("Veuillez configurer votre clé API Gemini avant de lancer l'aventure.");
+                return;
+            }
+
+            gameState.genre = selectedGenre;
+            gameState.history = [];
+            gameState.turn = 1;
+
+            // Masquer l'écran d'accueil et afficher le jeu
+            document.getElementById("screen-setup").classList.add("hidden");
+            document.getElementById("screen-game").classList.remove("hidden");
+            
+            // Setup l'état graphique initial du badge de genre
+            const badge = document.getElementById("game-genre-badge");
+            badge.innerText = selectedGenre;
+            adjustBadgeStyle(selectedGenre, badge);
+
+            // Générer le premier paragraphe
+            await fetchNextStoryStep("Début de l'aventure.");
+        }
+
+        // Faire progresser l'histoire sur la base du choix de l'utilisateur
+        async function fetchNextStoryStep(userChoiceText) {
+            showStoryLoader(true);
+            document.getElementById("choices-container").innerHTML = "";
+
+            // Préparation des instructions système
+            const systemPrompt = `Tu es le Maître du Jeu d'un jeu de rôle textuel de haut niveau en français. Ton but est d'immerger le joueur dans un univers passionnant de type '${gameState.genre}'.
+            Le joueur va interagir avec tes récits par des choix cruciaux. 
+            Tes tâches :
+            1. Rédige une suite narrative captivante, rythmée, poignante, d'environ 2 à 3 paragraphes immersifs.
+            2. Propose systématiquement entre 2 et 4 options de choix de jeu, chacune composée d'un 'title' dynamique (ex: "Fouiller le cadavre") et d'un 'impact' court suggérant de façon mystique ou technique le risque encouru (ex: "Peut révéler un trésor ou réveiller un piège"). Si l'histoire se termine, tu peux ne proposer qu'une option marquant la fin.
+            3. Choisis une couleur d'ambiance 'ambient_color' et sa couleur complémentaire 'ambient_secondary' de type sombre/mystérieux qui correspond à la situation actuelle (ex: vert poison, rouge sang, violet cosmique, bleu azur technologique) pour modifier dynamiquement l'UI du site.
+            4. Sois ultra-cohérent avec l'historique des choix précédents pour que l'aventure progresse de manière fluide.
+            5. TRÈS IMPORTANT : L'histoire NE DOIT PAS être infinie. Au fur et à mesure des choix (généralement entre 5 et 10 tours), dirige activement le scénario vers une véritable conclusion (une victoire épique, une mort tragique, ou une résolution finale). Donne une vraie fin à l'aventure au lieu de l'étirer indéfiniment.`;
+
+            // Construire l'historique des interactions pour le contexte de l'IA
+            let contextPrompt = `Genre de l'histoire: ${gameState.genre}.\n`;
+            if (gameState.history.length > 0) {
+                contextPrompt += "Historique des événements précédents :\n";
+                gameState.history.forEach((step, idx) => {
+                    contextPrompt += `Étape ${idx + 1} - Décision du joueur : "${step.choice}" -> Résultat de l'IA : "${step.narrative}"\n`;
+                });
+            }
+            contextPrompt += `Nouvelle décision actuelle du joueur : "${userChoiceText}". Raconte la suite et donne les prochains choix.`;
+
+            try {
+                const result = await fetchGeminiWithBackoff(contextPrompt, systemPrompt);
+                
+                // Mettre à jour l'historique
+                gameState.history.push({
+                    choice: userChoiceText,
+                    narrative: result.text
+                });
+
+                // Mettre à jour l'UI avec les données reçues
+                renderStory(result);
+                gameState.turn++;
+                document.getElementById("turn-counter").innerText = gameState.history.length;
+
+            } catch (error) {
+                console.error("Erreur Gemini:", error);
+                showError("Impossible de générer la suite de l'histoire. Veuillez vérifier votre connexion et l'état de votre clé API.");
+                // Ré-afficher les choix si possible ou proposer un bouton de secours
+                showStoryLoader(false);
+                fallbackResetUI();
+            }
+        }
+
+        // --- MISE À JOUR DE L'INTERFACE GRAPHIQUE ---
+
+        function renderStory(storyData) {
+            showStoryLoader(false);
+
+            // Mettre à jour le texte de l'histoire
+            const storyContainer = document.getElementById("story-content");
+            // Remplacement des sauts de ligne par des paragraphes HTML propres
+            const formattedText = storyData.text.split('\n\n').map(p => `<p class="mb-4 text-slate-100">${p}</p>`).join('');
+            storyContainer.innerHTML = formattedText;
+
+            // Adapter l'ambiance visuelle dynamique (Couleur principale reçue de l'IA)
+            applyDynamicAtmosphere(storyData.ambient_color, storyData.ambient_secondary);
+
+            // Afficher les nouveaux choix
+            const choicesContainer = document.getElementById("choices-container");
+            choicesContainer.innerHTML = "";
+
+            storyData.choices.forEach(choice => {
+                const card = document.createElement("button");
+                card.onclick = () => selectChoice(choice.actionValue);
+                card.className = "group relative text-left p-4 rounded-xl border border-white/10 bg-slate-900/60 hover:bg-white/5 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] overflow-hidden focus:outline-none flex flex-col justify-between";
+                
+                // Bordure lumineuse dynamique en survol
+                card.style.setProperty('--hover-border', storyData.ambient_color);
+                card.addEventListener('mouseenter', () => card.style.borderColor = storyData.ambient_color);
+                card.addEventListener('mouseleave', () => card.style.borderColor = 'rgba(255, 255, 255, 0.1)');
+
+                card.innerHTML = `
+                    <div class="space-y-1 relative z-10">
+                        <div class="flex items-center justify-between">
+                            <h5 class="font-bold text-white group-hover:text-white transition-colors text-sm sm:text-base">${choice.title}</h5>
+                            <i class="fa-solid fa-chevron-right text-xs opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all text-slate-400"></i>
+                        </div>
+                        <p class="text-xs text-slate-400 leading-normal">${choice.impact}</p>
+                    </div>
+                    <div class="absolute bottom-0 left-0 h-[2px] w-0 bg-gradient-to-r transition-all duration-300 group-hover:w-full" style="background-image: linear-gradient(to right, ${storyData.ambient_color}, ${storyData.ambient_secondary})"></div>
+                `;
+                choicesContainer.appendChild(card);
+            });
+        }
+
+        // Adapter dynamiquement l'arrière-plan et les lueurs ambiantes selon l'IA
+        function applyDynamicAtmosphere(primaryColor, secondaryColor) {
+            const glowLeft = document.getElementById("ambient-glow");
+            const glowRight = document.getElementById("ambient-glow-right");
+
+            if (glowLeft && glowRight) {
+                glowLeft.style.backgroundColor = primaryColor;
+                glowLeft.style.opacity = "0.15";
+                glowRight.style.backgroundColor = secondaryColor;
+                glowRight.style.opacity = "0.15";
+            }
+            
+            // Appliquer un liseré discret de couleur sur la zone d'histoire
+            const storyBox = document.getElementById("story-content").parentElement;
+            if (storyBox) {
+                storyBox.style.borderColor = `${primaryColor}33`; // 20% d'opacité
+                storyBox.style.boxShadow = `0 10px 30px -10px ${primaryColor}15`;
+            }
+        }
+
+        function showStoryLoader(show) {
+            const loader = document.getElementById("story-loader");
+            const content = document.getElementById("story-content");
+            if (show) {
+                loader.classList.remove("hidden");
+                content.classList.add("hidden");
+            } else {
+                loader.classList.add("hidden");
+                content.classList.remove("hidden");
+            }
+        }
+
+        function adjustBadgeStyle(genre, badgeElement) {
+            badgeElement.className = "px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider text-white";
+            if (genre.includes("Horreur")) {
+                badgeElement.classList.add("bg-red-950", "border", "border-red-500/40");
+            } else if (genre.includes("Fantasy")) {
+                badgeElement.classList.add("bg-purple-950", "border", "border-purple-500/40");
+            } else if (genre.includes("SF") || genre.includes("Cyber")) {
+                badgeElement.classList.add("bg-cyan-950", "border", "border-cyan-500/40");
+            } else {
+                badgeElement.classList.add("bg-indigo-950", "border", "border-indigo-500/40");
+            }
+        }
+
+        // --- ACTIONS UTILISATEUR ---
+
+        function selectGenre(genreName) {
+            startAdventure(genreName);
+        }
+
+        function selectCustomGenre() {
+            const customInput = document.getElementById("custom-genre");
+            const value = customInput.value.trim();
+            if (value) {
+                startAdventure(value);
+            } else {
+                customInput.focus();
+            }
+        }
+
+        function selectChoice(actionValue) {
+            fetchNextStoryStep(actionValue);
+        }
+
+        function confirmReset() {
+            document.getElementById("modal-reset").classList.remove("hidden");
+        }
+
+        function closeResetModal() {
+            document.getElementById("modal-reset").classList.add("hidden");
+        }
+
+        function resetToHome() {
+            closeResetModal();
+            document.getElementById("screen-game").classList.add("hidden");
+            document.getElementById("screen-setup").classList.remove("hidden");
+            
+            // Reset de l'ambiance par défaut
+            applyDynamicAtmosphere("#581c87", "#311042");
+        }
+
+        function fallbackResetUI() {
+            const choicesContainer = document.getElementById("choices-container");
+            choicesContainer.innerHTML = `
+                <div class="col-span-full flex flex-col items-center justify-center p-6 bg-slate-900/50 rounded-2xl border border-red-500/10 space-y-3">
+                    <p class="text-sm text-slate-300">L'aventure a rencontré un obstacle inattendu.</p>
+                    <button onclick="fetchNextStoryStep('Continuer l\\\'aventure')" class="px-5 py-2 bg-purple-600 hover:bg-purple-700 font-bold rounded-lg text-xs transition">
+                        <i class="fa-solid fa-arrows-rotate mr-1.5"></i> Réessayer la génération
+                    </button>
+                </div>
+            `;
+        }
+
+        // --- GESTION DE LA CLÉ API ---
+
+        function updateApiStatusIndicator() {
+            const dot = document.getElementById("api-status-dot");
+            const text = document.getElementById("api-status-text");
+            const banner = document.getElementById("setup-api-banner");
+
+            if (userApiKey) {
+                dot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500";
+                text.innerText = "Clé API Configurée";
+                text.className = "hidden sm:inline text-xs text-emerald-400";
+                banner.classList.add("hidden");
+            } else {
+                dot.className = "w-2.5 h-2.5 rounded-full bg-amber-500";
+                text.innerText = "Clé API manquante";
+                text.className = "hidden sm:inline text-xs text-amber-400";
+                banner.classList.remove("hidden");
+            }
+        }
+
+        function openApiModal() {
+            const modal = document.getElementById("modal-api");
+            const input = document.getElementById("input-api-key-modal");
+            input.value = userApiKey;
+            modal.classList.remove("hidden");
+        }
+
+        function closeApiModal() {
+            document.getElementById("modal-api").classList.add("hidden");
+        }
+
+        function saveModalKey() {
+            const input = document.getElementById("input-api-key-modal");
+            const value = input.value.trim();
+            if (value) {
+                userApiKey = value;
+                localStorage.setItem(apiKeyStorageKey, value);
+                updateApiStatusIndicator();
+                closeApiModal();
+            } else {
+                userApiKey = "";
+                localStorage.removeItem(apiKeyStorageKey);
+                updateApiStatusIndicator();
+                closeApiModal();
+            }
+        }
+
+        function saveSetupKey() {
+            const input = document.getElementById("input-api-key-setup");
+            const value = input.value.trim();
+            if (value) {
+                userApiKey = value;
+                localStorage.setItem(apiKeyStorageKey, value);
+                updateApiStatusIndicator();
+            }
+        }
+
+        // --- ALERTES ET TOASTS ---
+
+        function showError(message) {
+            const toast = document.getElementById("error-toast");
+            const text = document.getElementById("error-toast-text");
+            text.innerText = message;
+            toast.classList.remove("hidden");
+            
+            // Masquer automatiquement après 8 secondes
+            setTimeout(() => {
+                hideError();
+            }, 8000);
+        }
+
+        function hideError() {
+            document.getElementById("error-toast").classList.add("hidden");
+        }
+
+        // --- CRÉATION DE L'ATMOSPHÈRE DE DÉPART AU CHARGEMENT ---
+        window.onload = function() {
+            updateApiStatusIndicator();
+            applyDynamicAtmosphere("#581c87", "#311042");
+        };
+    </script>
+</body>
+</html>

@@ -46,7 +46,7 @@
     <!-- HEADER -->
     <header class="border-b border-white/10 backdrop-blur-md bg-slate-950/60 sticky top-0 z-40 transition-colors duration-1000">
         <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
-            <div class="flex items-center space-x-3 cursor-pointer" onclick="resetToHome()">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="resetToHome(false)">
                 <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-600 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-500/20">
                     <i class="fa-solid fa-wand-magic-sparkles text-white text-lg"></i>
                 </div>
@@ -79,6 +79,22 @@
                 </p>
             </div>
 
+            <!-- Onglet de reprise d'aventure sauvegardée -->
+            <div id="saved-game-container" class="hidden"></div>
+
+            <!-- Choix de la longueur globale de l'histoire -->
+            <div class="max-w-xl mx-auto p-4 rounded-2xl border border-white/5 bg-slate-900/30 backdrop-blur-sm space-y-3">
+                <h4 class="text-white font-semibold text-center flex items-center justify-center gap-2 text-sm">
+                    <i class="fa-solid fa-hourglass-half text-purple-400"></i> Durée de l'aventure :
+                </h4>
+                <div class="grid grid-cols-4 gap-2 text-xs">
+                    <button onclick="setLength('très courte')" id="btn-len-very-short" class="py-2 rounded-xl border border-white/10 hover:bg-white/5 transition font-semibold text-slate-300">Très Courte</button>
+                    <button onclick="setLength('courte')" id="btn-len-short" class="py-2 rounded-xl border border-white/10 hover:bg-white/5 transition font-semibold text-slate-300">Courte</button>
+                    <button onclick="setLength('moyenne')" id="btn-len-medium" class="py-2 rounded-xl border border-purple-500 bg-purple-500/10 text-purple-400 transition font-semibold">Moyenne</button>
+                    <button onclick="setLength('longue')" id="btn-len-long" class="py-2 rounded-xl border border-white/10 hover:bg-white/5 transition font-semibold text-slate-300">Longue</button>
+                </div>
+            </div>
+
             <!-- Grille de sélection des thèmes -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto pt-4">
                 <!-- Thème Horreur -->
@@ -94,7 +110,7 @@
                 <!-- Thème Fantasy -->
                 <button onclick="selectGenre('High Fantasy')" class="group relative text-left p-6 rounded-2xl border border-white/10 bg-slate-900/50 hover:bg-purple-950/20 hover:border-purple-500/30 transition-all duration-300 hover:-translate-y-1 overflow-hidden">
                     <div class="absolute top-0 right-0 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl group-hover:bg-purple-500/20 transition-all"></div>
-                    <div class="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-500 text-xl mb-4 group-hover:scale-110 transition-transform">
+                    <div class="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 text-xl mb-4 group-hover:scale-110 transition-transform">
                         <i class="fa-solid fa-dragon"></i>
                     </div>
                     <h3 class="font-title text-xl font-bold text-white mb-2 group-hover:text-purple-400 transition-colors">Heroic Fantasy</h3>
@@ -153,8 +169,18 @@
                 <div class="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-white/10 rounded-tl-3xl pointer-events-none"></div>
                 <div class="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-white/10 rounded-br-3xl pointer-events-none"></div>
 
+                <!-- Boutons d'actions rapides (Image & Audio) -->
+                <div id="story-quick-actions" class="absolute top-4 right-4 flex items-center space-x-1 z-20">
+                    <button id="btn-generate-image" onclick="confirmImageGeneration()" class="text-amber-500 hover:text-amber-400 transition p-2 rounded-full hover:bg-white/5" title="Générer une illustration (Coûte des crédits)">
+                        <i class="fa-solid fa-image text-lg"></i>
+                    </button>
+                    <button id="btn-speak" onclick="toggleSpeech()" class="text-slate-400 hover:text-purple-400 transition p-2 rounded-full hover:bg-white/5" title="Lire à haute voix">
+                        <i class="fa-solid fa-volume-high text-lg"></i>
+                    </button>
+                </div>
+
                 <!-- Texte narratif généré -->
-                <div id="story-content" class="prose prose-invert max-w-none text-slate-200 text-base md:text-lg leading-relaxed space-y-4 font-normal tracking-wide">
+                <div id="story-content" class="prose prose-invert max-w-none text-slate-200 text-base md:text-lg leading-relaxed space-y-4 font-normal tracking-wide pr-8">
                     <!-- Rempli par l'IA -->
                 </div>
 
@@ -253,7 +279,22 @@
             <p class="text-xs text-slate-300">Vous allez perdre votre progression actuelle dans cette histoire. Êtes-vous sûr ?</p>
             <div class="flex space-x-2 pt-2">
                 <button onclick="closeResetModal()" class="flex-1 py-2 rounded-xl border border-white/10 text-slate-300 hover:bg-white/5 transition text-sm">Continuer de jouer</button>
-                <button onclick="resetToHome()" class="flex-1 py-2 bg-red-600 hover:bg-red-700 font-semibold rounded-xl text-white transition text-sm">Recommencer</button>
+                <button onclick="resetToHome(true)" class="flex-1 py-2 bg-red-600 hover:bg-red-700 font-semibold rounded-xl text-white transition text-sm">Recommencer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL AVERTISSEMENT IMAGE -->
+    <div id="modal-image-warning" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4 bg-slate-950/80 backdrop-blur-md">
+        <div class="bg-slate-900 border border-amber-500/20 w-full max-w-sm rounded-2xl p-6 space-y-4 shadow-2xl relative">
+            <h3 class="font-title text-lg font-bold text-white flex items-center gap-2"><i class="fa-solid fa-image text-amber-500"></i> Créer une illustration ?</h3>
+            <div class="space-y-2">
+                <p class="text-xs text-slate-300">Attention : Générer une image utilise <strong class="text-amber-400">beaucoup de crédits API</strong>.</p>
+                <p class="text-[11px] text-slate-400">Si vous utilisez la version gratuite, en abuser pourrait épuiser votre quota rapidement et abréger votre histoire par manque de crédits.</p>
+            </div>
+            <div class="flex space-x-2 pt-2">
+                <button onclick="closeImageWarning()" class="flex-1 py-2 rounded-xl border border-white/10 text-slate-300 hover:bg-white/5 transition text-sm">Annuler</button>
+                <button onclick="proceedGenerateImage()" class="flex-1 py-2 bg-amber-600 hover:bg-amber-700 font-semibold rounded-xl text-white transition text-sm shadow-lg shadow-amber-500/20">Générer l'image</button>
             </div>
         </div>
     </div>
@@ -261,18 +302,26 @@
     <script>
         // --- CONSTANTES ET CONFIGURATION ---
         const apiKeyStorageKey = "sagas_infinies_gemini_key";
+        const savedStoryStorageKey = "sagas_infinies_saved_state";
         let userApiKey = localStorage.getItem(apiKeyStorageKey) || "";
+        
+        // Configuration de la synthèse vocale
+        let synth = window.speechSynthesis;
+        let utterance = null;
+        let isSpeaking = false;
         
         // État global du jeu
         let gameState = {
             genre: "",
+            length: "moyenne", // Valeurs possibles: très courte, courte, moyenne, longue
             history: [], // Stocke les tours de jeu pour donner du contexte à l'IA
             turn: 0,
             currentTheme: {
                 primary: "#6366f1", // indigo
                 bg: "bg-slate-950",
                 shadow: "shadow-indigo-500/20"
-            }
+            },
+            lastResult: null // Contiendra le dernier objet retourné par l'IA
         };
 
         // --- APPEL DE L'API (Inspiré de l'ancien code robuste) ---
@@ -363,6 +412,170 @@ ${contextPrompt}`;
             }
         }
 
+        // --- GÉNÉRATION D'IMAGES ---
+        function confirmImageGeneration() {
+            if (!gameState.lastResult || !gameState.lastResult.text) return;
+            document.getElementById("modal-image-warning").classList.remove("hidden");
+        }
+
+        function closeImageWarning() {
+            document.getElementById("modal-image-warning").classList.add("hidden");
+        }
+
+        async function proceedGenerateImage() {
+            closeImageWarning();
+            
+            const btn = document.getElementById("btn-generate-image");
+            const originalIcon = btn.innerHTML;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-lg"></i>`;
+            btn.disabled = true;
+
+            const storyContainer = document.getElementById("story-content");
+            
+            // Ajouter un espace de chargement pour l'image dans le texte
+            const imageContainerId = "scene-image-" + gameState.turn;
+            const imagePlaceholder = document.createElement("div");
+            imagePlaceholder.id = imageContainerId;
+            imagePlaceholder.className = "w-full h-64 md:h-80 rounded-xl border border-white/10 bg-slate-900/50 flex flex-col items-center justify-center space-y-3 my-6 animate-pulse";
+            imagePlaceholder.innerHTML = `
+                <i class="fa-solid fa-paintbrush text-3xl text-amber-500/50"></i>
+                <p class="text-xs text-amber-500/70">L'IA dessine l'illustration en cours...</p>
+            `;
+            storyContainer.appendChild(imagePlaceholder);
+
+            try {
+                if (!userApiKey) throw new Error("Clé API manquante.");
+
+                // Création d'un prompt visuel en anglais à partir du contexte
+                const promptText = `A highly detailed, cinematic digital art illustration of this scene. Genre: ${gameState.genre}. Scene description: ${gameState.lastResult.text.substring(0, 600)}... No text or words in the image.`;
+
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${userApiKey}`;
+                const payload = {
+                    instances: { prompt: promptText },
+                    parameters: { sampleCount: 1 }
+                };
+
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error?.message || "Erreur API Google Imagen");
+                }
+
+                if (result.predictions && result.predictions[0] && result.predictions[0].bytesBase64Encoded) {
+                    const imageUrl = `data:image/png;base64,${result.predictions[0].bytesBase64Encoded}`;
+                    
+                    const actualImage = document.getElementById(imageContainerId);
+                    actualImage.classList.remove("animate-pulse", "bg-slate-900/50", "flex", "flex-col", "items-center", "justify-center", "space-y-3", "h-64", "md:h-80");
+                    actualImage.innerHTML = `<img src="${imageUrl}" alt="Illustration de la scène" class="w-full h-auto rounded-xl shadow-2xl border border-white/10">`;
+                } else {
+                    throw new Error("Format de réponse image invalide.");
+                }
+
+            } catch (error) {
+                console.error("Erreur génération image:", error);
+                const actualImage = document.getElementById(imageContainerId);
+                if (actualImage) {
+                    actualImage.innerHTML = `
+                        <i class="fa-solid fa-triangle-exclamation text-2xl text-red-500/50"></i>
+                        <p class="text-xs text-red-400">Échec de l'illustration : ${error.message.includes("quota") ? "Quota dépassé" : "Erreur API"}</p>
+                    `;
+                }
+                showError("Génération d'image impossible : " + error.message);
+            } finally {
+                btn.innerHTML = originalIcon;
+                btn.disabled = false;
+            }
+        }
+
+        // --- SELECTION DE LA LONGUEUR ---
+        function setLength(len) {
+            gameState.length = len;
+            const btnVeryShort = document.getElementById("btn-len-very-short");
+            const btnShort = document.getElementById("btn-len-short");
+            const btnMedium = document.getElementById("btn-len-medium");
+            const btnLong = document.getElementById("btn-len-long");
+
+            const inactiveClasses = "border-white/10 hover:bg-white/5 text-slate-300";
+            const activeClasses = "border-purple-500 bg-purple-500/10 text-purple-400";
+
+            [btnVeryShort, btnShort, btnMedium, btnLong].forEach(btn => {
+                if (btn) {
+                    btn.className = "py-2 rounded-xl border transition font-semibold " + inactiveClasses;
+                }
+            });
+
+            let targetBtn;
+            if (len === "très courte") targetBtn = btnVeryShort;
+            else if (len === "courte") targetBtn = btnShort;
+            else if (len === "moyenne") targetBtn = btnMedium;
+            else if (len === "longue") targetBtn = btnLong;
+
+            if (targetBtn) {
+                targetBtn.className = "py-2 rounded-xl border transition font-semibold " + activeClasses;
+            }
+        }
+
+        // --- SYNTHESE VOCALE (LECTURE AUDIO) ---
+        function toggleSpeech() {
+            if (!synth) {
+                showError("La synthèse vocale n'est pas supportée par votre navigateur.");
+                return;
+            }
+
+            if (isSpeaking) {
+                synth.cancel();
+                isSpeaking = false;
+                updateSpeechButton(false);
+            } else {
+                const textToSpeak = document.getElementById("story-content").innerText;
+                if (!textToSpeak || textToSpeak.trim() === "") return;
+
+                utterance = new SpeechSynthesisUtterance(textToSpeak);
+                utterance.lang = "fr-FR";
+
+                // Essai d'attribution d'une voix française disponible
+                const voices = synth.getVoices();
+                const frVoice = voices.find(v => v.lang.startsWith("fr"));
+                if (frVoice) {
+                    utterance.voice = frVoice;
+                }
+
+                utterance.onend = () => {
+                    isSpeaking = false;
+                    updateSpeechButton(false);
+                };
+
+                utterance.onerror = () => {
+                    isSpeaking = false;
+                    updateSpeechButton(false);
+                };
+
+                isSpeaking = true;
+                updateSpeechButton(true);
+                synth.speak(utterance);
+            }
+        }
+
+        function updateSpeechButton(active) {
+            const btn = document.getElementById("btn-speak");
+            if (!btn) return;
+            if (active) {
+                btn.innerHTML = `<i class="fa-solid fa-volume-xmark text-lg animate-pulse"></i>`;
+                btn.classList.add("text-purple-400");
+                btn.title = "Arrêter la lecture";
+            } else {
+                btn.innerHTML = `<i class="fa-solid fa-volume-high text-lg"></i>`;
+                btn.classList.remove("text-purple-400");
+                btn.title = "Lire à haute voix";
+            }
+        }
+
         // --- CYCLE DE JEU ---
 
         // Lancer une nouvelle histoire
@@ -384,6 +597,7 @@ ${contextPrompt}`;
             gameState.genre = selectedGenre;
             gameState.history = [];
             gameState.turn = 1;
+            gameState.lastResult = null;
 
             // Masquer l'écran d'accueil et afficher le jeu
             document.getElementById("screen-setup").classList.add("hidden");
@@ -403,17 +617,36 @@ ${contextPrompt}`;
             showStoryLoader(true);
             document.getElementById("choices-container").innerHTML = "";
 
+            // Interrompre la synthèse vocale en cours d'une étape précédente
+            if (synth && isSpeaking) {
+                synth.cancel();
+                isSpeaking = false;
+                updateSpeechButton(false);
+            }
+
+            // Calcul du nombre maximal de tours par rapport à la préférence sélectionnée
+            let maxTurns = 8;
+            if (gameState.length === "très courte") maxTurns = 3;
+            else if (gameState.length === "courte") maxTurns = 5;
+            else if (gameState.length === "moyenne") maxTurns = 8;
+            else if (gameState.length === "longue") maxTurns = 13;
+
+            const currentTurnIndex = gameState.history.length + 1;
+
             // Préparation des instructions système
-            const systemPrompt = `Tu es le Maître du Jeu d'un jeu de rôle textuel de haut niveau en français. Ton but est d'immerger le joueur dans un univers passionnant de type '${gameState.genre}'.
+            const systemPrompt = `Tu es le Maître du Jeu d'un jeu de rôle textuel de haut niveau en français. Ton but est d'immerger le joueur dans un univers de type '${gameState.genre}'.
             Le joueur va interagir avec tes récits par des choix cruciaux. 
             Tes tâches :
             1. Rédige une suite narrative captivante, rythmée, poignante, d'environ 2 à 3 paragraphes immersifs.
             2. Propose systématiquement entre 2 et 4 options de choix de jeu, chacune composée d'un 'title' dynamique (ex: "Fouiller le cadavre") et d'un 'impact' court suggérant le risque encouru. Si l'histoire se termine, tu peux ne proposer qu'une option marquant la fin.
             3. Choisis une couleur d'ambiance 'ambient_color' et sa couleur complémentaire 'ambient_secondary' de type sombre/mystérieux qui correspond à la situation actuelle pour modifier dynamiquement l'UI du site.
-            4. L'histoire NE DOIT PAS être infinie. Au fur et à mesure des choix (généralement entre 5 et 10 tours), dirige activement le scénario vers une véritable conclusion (une victoire, une mort, etc). Donne une vraie fin à l'aventure au lieu de l'étirer indéfiniment.`;
+            4. TRÈS IMPORTANT : L'histoire DOIT SE TERMINER en maximum ${maxTurns} tours. 
+               - Actuellement, nous sommes au tour numéro ${currentTurnIndex} sur un total de ${maxTurns}.
+               - Si nous approchons ou atteignons ce nombre de tours, dirige activement, fermement et intelligemment le scénario vers une véritable conclusion (une victoire épique, une mort tragique, une résolution, etc.).
+               - Si c'est le dernier tour (tour ${maxTurns}), écris un dénouement final mémorable et ne propose absolument aucun choix futur (laisse le tableau "choices" vide dans ton JSON).`;
 
             // Construire l'historique des interactions pour le contexte de l'IA
-            let contextPrompt = `Genre de l'histoire: ${gameState.genre}.\n`;
+            let contextPrompt = `Genre de l'histoire: ${gameState.genre}.\nLongueur choisie: ${gameState.length} (Fin impérative au tour ${maxTurns}).\n`;
             if (gameState.history.length > 0) {
                 contextPrompt += "Historique des événements précédents :\n";
                 gameState.history.forEach((step, idx) => {
@@ -438,16 +671,96 @@ ${contextPrompt}`;
 
             } catch (error) {
                 console.error("Erreur complète API:", error);
-                showError(`Erreur: ${error.message}`);
+                
+                // --- GESTION INTELLIGENTE ET PROPRE DE L'ERREUR DE QUOTA ---
+                let friendlyMessage = `Erreur: ${error.message}`;
+                const errLower = error.message.toLowerCase();
+                if (errLower.includes("quota") || errLower.includes("limit") || errLower.includes("exceeded") || errLower.includes("429")) {
+                    friendlyMessage = "⚠️ Quota d'API dépassé (Crédits épuisés) !\nVous utilisez le niveau gratuit de l'API Gemini et avez temporairement atteint la limite autorisée. Veuillez patienter environ une minute avant de cliquer sur le bouton 'Réessayer la génération'.";
+                }
+                
+                showError(friendlyMessage);
                 showStoryLoader(false);
                 fallbackResetUI();
             }
         }
 
-        // --- MISE À JOUR DE L'INTERFACE GRAPHIQUE ---
+        // --- SAUVEGARDE ET RESTAURATION ---
+
+        function saveGame() {
+            localStorage.setItem(savedStoryStorageKey, JSON.stringify(gameState));
+        }
+
+        function loadSavedGame() {
+            const saved = localStorage.getItem(savedStoryStorageKey);
+            if (saved) {
+                gameState = JSON.parse(saved);
+                
+                // Synchroniser la sélection visuelle de longueur de sauvegarde
+                setLength(gameState.length || "moyenne");
+
+                // Transitionner vers l'écran de jeu
+                document.getElementById("screen-setup").classList.add("hidden");
+                document.getElementById("screen-game").classList.remove("hidden");
+                
+                const badge = document.getElementById("game-genre-badge");
+                badge.innerText = gameState.genre;
+                adjustBadgeStyle(gameState.genre, badge);
+                
+                document.getElementById("turn-counter").innerText = gameState.history.length;
+                renderStory(gameState.lastResult);
+            }
+        }
+
+        function deleteSavedGame() {
+            localStorage.removeItem(savedStoryStorageKey);
+            renderSavedGameTab();
+        }
+
+        function renderSavedGameTab() {
+            const saved = localStorage.getItem(savedStoryStorageKey);
+            const tabContainer = document.getElementById("saved-game-container");
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    tabContainer.innerHTML = `
+                        <div class="max-w-xl mx-auto p-4 rounded-2xl border border-purple-500/30 bg-purple-950/20 backdrop-blur-md flex items-center justify-between gap-4 animate-fade-in shadow-lg shadow-purple-500/10">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-400">
+                                    <i class="fa-solid fa-bookmark"></i>
+                                </div>
+                                <div class="text-left">
+                                    <h4 class="font-bold text-white text-sm">Aventure en cours</h4>
+                                    <p class="text-xs text-slate-300">${parsed.genre} — Étape ${parsed.turn} (${parsed.length || 'moyenne'})</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <button onclick="loadSavedGame()" class="px-4 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-xs transition shadow-md shadow-purple-500/20">
+                                    Reprendre
+                                </button>
+                                <button onclick="deleteSavedGame()" class="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-white/5 transition" title="Supprimer la sauvegarde">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    tabContainer.classList.remove("hidden");
+                } catch(e) {
+                    tabContainer.classList.add("hidden");
+                }
+            } else {
+                tabContainer.classList.add("hidden");
+                tabContainer.innerHTML = "";
+            }
+        }
+
+        // --- MISE À ZONE DE L'INTERFACE GRAPHIQUE ---
 
         function renderStory(storyData) {
             showStoryLoader(false);
+
+            // Mémoriser le dernier résultat dans l'état global
+            gameState.lastResult = storyData;
 
             const storyContainer = document.getElementById("story-content");
             const formattedText = storyData.text.split('\n').filter(p => p.trim() !== '').map(p => `<p class="mb-4 text-slate-100">${p}</p>`).join('');
@@ -458,7 +771,13 @@ ${contextPrompt}`;
             const choicesContainer = document.getElementById("choices-container");
             choicesContainer.innerHTML = "";
 
+            // Réinitialiser l'état visuel du bouton audio au changement de récit
+            updateSpeechButton(false);
+
             if (storyData.choices && storyData.choices.length > 0) {
+                // Sauvegarder la progression puisqu'elle est active et non terminée
+                saveGame();
+
                 storyData.choices.forEach(choice => {
                     const card = document.createElement("button");
                     card.onclick = () => selectChoice(choice.actionValue);
@@ -481,11 +800,14 @@ ${contextPrompt}`;
                     choicesContainer.appendChild(card);
                 });
             } else {
-                 // S'il n'y a plus de choix (Fin de l'histoire)
+                 // S'il n'y a plus de choix (Fin de l'histoire atteinte)
+                 // On vide la sauvegarde locale pour laisser place à la prochaine aventure
+                 deleteSavedGame();
+
                  const endCard = document.createElement("button");
-                 endCard.onclick = () => resetToHome();
+                 endCard.onclick = () => resetToHome(false);
                  endCard.className = "col-span-full group relative text-center p-4 rounded-xl border border-white/10 bg-slate-900/60 hover:bg-white/5 transition-all duration-300";
-                 endCard.innerHTML = `<h5 class="font-bold text-white mb-1"><i class="fa-solid fa-book-open mr-2"></i>Fin du Récit</h5><p class="text-xs text-slate-400">Cliquez pour recommencer une nouvelle aventure.</p>`;
+                 endCard.innerHTML = `<h5 class="font-bold text-white mb-1"><i class="fa-solid fa-book-open mr-2"></i>Fin du Récit</h5><p class="text-xs text-slate-400">Cliquez ici pour retourner à l'accueil et démarrer une nouvelle aventure.</p>`;
                  choicesContainer.appendChild(endCard);
             }
         }
@@ -513,12 +835,15 @@ ${contextPrompt}`;
         function showStoryLoader(show) {
             const loader = document.getElementById("story-loader");
             const content = document.getElementById("story-content");
+            const quickActions = document.getElementById("story-quick-actions");
             if (show) {
                 loader.classList.remove("hidden");
                 content.classList.add("hidden");
+                if (quickActions) quickActions.classList.add("hidden");
             } else {
                 loader.classList.add("hidden");
                 content.classList.remove("hidden");
+                if (quickActions) quickActions.classList.remove("hidden");
             }
         }
 
@@ -571,8 +896,21 @@ ${contextPrompt}`;
             document.getElementById("modal-reset").classList.add("hidden");
         }
 
-        function resetToHome() {
+        function resetToHome(deleteSave = false) {
             closeResetModal();
+            
+            // Annuler la lecture audio lors du retour au menu
+            if (synth && isSpeaking) {
+                synth.cancel();
+                isSpeaking = false;
+                updateSpeechButton(false);
+            }
+
+            if (deleteSave) {
+                deleteSavedGame();
+            } else {
+                renderSavedGameTab(); // Juste actualiser le panneau pour montrer l'onglet
+            }
             document.getElementById("screen-game").classList.add("hidden");
             document.getElementById("screen-setup").classList.remove("hidden");
             
@@ -584,8 +922,8 @@ ${contextPrompt}`;
             const choicesContainer = document.getElementById("choices-container");
             choicesContainer.innerHTML = `
                 <div class="col-span-full flex flex-col items-center justify-center p-6 bg-slate-900/50 rounded-2xl border border-red-500/10 space-y-3">
-                    <p class="text-sm text-slate-300">L'aventure a rencontré un obstacle inattendu.</p>
-                    <button onclick="fetchNextStoryStep('Continuer l\\\'aventure après cette interruption')" class="px-5 py-2 bg-purple-600 hover:bg-purple-700 font-bold rounded-lg text-xs transition">
+                    <p class="text-sm text-slate-300">L'aventure a rencontré un obstacle temporaire lié aux quotas de votre clé.</p>
+                    <button onclick="fetchNextStoryStep('Continuer l\\\'aventure')" class="px-5 py-2 bg-purple-600 hover:bg-purple-700 font-bold rounded-lg text-xs transition">
                         <i class="fa-solid fa-arrows-rotate mr-1.5"></i> Réessayer la génération
                     </button>
                 </div>
@@ -658,8 +996,17 @@ ${contextPrompt}`;
             userApiKey = localStorage.getItem(apiKeyStorageKey) || "";
             updateApiStatusIndicator();
             applyDynamicAtmosphere("#581c87", "#311042");
+            // Appliquer l'état visuel de la longueur de jeu actuelle
+            setLength(gameState.length || "moyenne");
+            // Vérifier et afficher l'onglet de reprise d'aventure si présent
+            renderSavedGameTab();
             // Vérification intelligente et ouverture du modal si clé manquante
             checkOnboarding();
+            
+            // Chargement anticipé des voix système pour la synthèse vocale
+            if (synth && synth.onvoiceschanged !== undefined) {
+                synth.onvoiceschanged = () => {};
+            }
         };
     </script>
 </body>

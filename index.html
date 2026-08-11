@@ -16,7 +16,8 @@
     <style>
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
-            transition: background 1.5s ease, color 1.5s ease;
+            transition: background-color 1.5s ease-in-out, color 1.5s ease;
+            background-color: #020617; /* Equivalent à slate-950 par défaut */
         }
         .font-title {
             font-family: 'Cinzel', serif;
@@ -37,7 +38,7 @@
         }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-full flex flex-col justify-between relative overflow-x-hidden selection:bg-purple-500/30">
+<body class="text-slate-100 min-h-full flex flex-col justify-between relative overflow-x-hidden selection:bg-purple-500/30">
 
     <!-- Effet de halo lumineux en arrière-plan -->
     <div id="ambient-glow" class="fixed -top-40 -left-40 w-96 h-96 rounded-full bg-purple-900/20 blur-[120px] pointer-events-none transition-all duration-[2000ms] z-0"></div>
@@ -134,6 +135,7 @@
                     <i class="fa-solid fa-pen-nib text-purple-400"></i> Ou personnalisez votre propre univers :
                 </h4>
                 <div class="flex flex-col sm:flex-row gap-2">
+                    <!-- Le prompt sera maintenant caché dans la barre de titre et envoyé uniquement à l'IA -->
                     <input type="text" id="custom-genre" placeholder="Ex: Enquête policière occulte en 1890, Survie post-apocalyptique..." class="flex-grow px-4 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 transition">
                     <button onclick="selectCustomGenre()" class="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 font-bold rounded-xl text-sm text-white transition shadow-lg shadow-purple-500/20 whitespace-nowrap">
                         Lancer mon aventure
@@ -148,8 +150,9 @@
             <!-- Barre d'état de l'aventure -->
             <div class="flex justify-between items-center bg-slate-900/40 border border-white/10 p-3 rounded-2xl backdrop-blur-sm">
                 <div class="flex items-center space-x-3">
-                    <div id="game-genre-badge" class="px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider text-white">
-                        HISTOIRE
+                    <div id="game-genre-badge" class="px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider text-white bg-slate-800 border border-slate-600/50">
+                        <!-- Le vrai titre généré apparaîtra ici -->
+                        Génération du Titre...
                     </div>
                     <div class="h-4 w-px bg-white/10"></div>
                     <div class="text-xs text-slate-400">
@@ -312,7 +315,8 @@
         
         // État global du jeu
         let gameState = {
-            genre: "",
+            genre: "", // Le prompt ou genre original (sera gardé en mémoire mais caché)
+            story_title: "", // Le titre généré par l'IA pour l'affichage
             length: "moyenne", // Valeurs possibles: très courte, courte, moyenne, longue
             history: [], // Stocke les tours de jeu pour donner du contexte à l'IA
             turn: 0,
@@ -324,10 +328,9 @@
             lastResult: null // Contiendra le dernier objet retourné par l'IA
         };
 
-        // --- APPEL DE L'API (Inspiré de l'ancien code robuste) ---
+        // --- APPEL DE L'API ---
         async function fetchGeminiWithBackoff(contextPrompt, systemInstruction, retries = 5, delay = 1000) {
             
-            // On s'assure que la clé existe, sinon on force un PROMPT comme dans l'ancien code qui marchait
             if (!userApiKey) {
                 userApiKey = prompt("Clé API Gemini requise pour jouer.\n\n1. Allez sur le site : https://aistudio.google.com/app/apikey\n2. Créez une clé gratuite.\n3. Collez-la ci-dessous :");
                 if (userApiKey) {
@@ -338,19 +341,18 @@
                 }
             }
 
-            // Utilisation du modèle stable officiel universellement disponible gemini-2.5-flash
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${userApiKey}`;
             
-            // On fusionne les instructions système et le contexte dans un seul message (très robuste)
-            // On demande spécifiquement le format JSON dans le texte sans utiliser de "responseSchema" qui peut bugger
+            // Nouveau format pour obliger l'IA à inclure "story_title" et forcer la couleur de fond
             const fullPrompt = `${systemInstruction}
 
 TRÈS IMPORTANT:
 Tu DOIS impérativement retourner UNIQUEMENT un objet JSON valide, sans aucun texte autour, et sans balises markdown de code.
 Format JSON attendu :
 {
+  "story_title": "Titre généré court et épique qui représente l'histoire (très important)",
   "text": "La narration de la suite de l'histoire, soignée et immersive...",
-  "ambient_color": "#7f1d1d",
+  "ambient_color": "#1a0505",
   "ambient_secondary": "#4c1d95",
   "choices": [
     {
@@ -365,7 +367,6 @@ Format JSON attendu :
 CONTEXTE DE L'HISTOIRE :
 ${contextPrompt}`;
 
-            // Un payload simple, pur, et sans fioritures (identique à l'ancien code)
             const payload = {
                 contents: [
                     { role: "user", parts: [{ text: fullPrompt }] }
@@ -390,13 +391,11 @@ ${contextPrompt}`;
                         throw new Error(errMsg);
                     }
 
-                    // Parsing sécurisé de la réponse JSON de Gemini
                     if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts[0].text) {
                         const jsonText = data.candidates[0].content.parts[0].text;
                         try {
                             return JSON.parse(jsonText);
                         } catch (e) {
-                            // Au cas où l'IA rajoute quand même les balises ```json au début
                             const cleanedText = jsonText.replace(/```json/g, '').replace(/```/g, '').trim();
                             return JSON.parse(cleanedText);
                         }
@@ -407,7 +406,7 @@ ${contextPrompt}`;
                     console.warn(`Tentative API ${i + 1} échouée:`, error.message);
                     if (i === retries - 1) throw error; 
                     await new Promise(resolve => setTimeout(resolve, delay));
-                    delay *= 2; // Exponential backoff discret
+                    delay *= 2; 
                 }
             }
         }
@@ -431,8 +430,6 @@ ${contextPrompt}`;
             btn.disabled = true;
 
             const storyContainer = document.getElementById("story-content");
-            
-            // Ajouter un espace de chargement pour l'image dans le texte
             const imageContainerId = "scene-image-" + gameState.turn;
             const imagePlaceholder = document.createElement("div");
             imagePlaceholder.id = imageContainerId;
@@ -446,7 +443,6 @@ ${contextPrompt}`;
             try {
                 if (!userApiKey) throw new Error("Clé API manquante.");
 
-                // Création d'un prompt visuel en anglais à partir du contexte
                 const promptText = `A highly detailed, cinematic digital art illustration of this scene. Genre: ${gameState.genre}. Scene description: ${gameState.lastResult.text.substring(0, 600)}... No text or words in the image.`;
 
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${userApiKey}`;
@@ -463,13 +459,10 @@ ${contextPrompt}`;
 
                 const result = await response.json();
 
-                if (!response.ok) {
-                    throw new Error(result.error?.message || "Erreur API Google Imagen");
-                }
+                if (!response.ok) throw new Error(result.error?.message || "Erreur API Google Imagen");
 
                 if (result.predictions && result.predictions[0] && result.predictions[0].bytesBase64Encoded) {
                     const imageUrl = `data:image/png;base64,${result.predictions[0].bytesBase64Encoded}`;
-                    
                     const actualImage = document.getElementById(imageContainerId);
                     actualImage.classList.remove("animate-pulse", "bg-slate-900/50", "flex", "flex-col", "items-center", "justify-center", "space-y-3", "h-64", "md:h-80");
                     actualImage.innerHTML = `<img src="${imageUrl}" alt="Illustration de la scène" class="w-full h-auto rounded-xl shadow-2xl border border-white/10">`;
@@ -505,9 +498,7 @@ ${contextPrompt}`;
             const activeClasses = "border-purple-500 bg-purple-500/10 text-purple-400";
 
             [btnVeryShort, btnShort, btnMedium, btnLong].forEach(btn => {
-                if (btn) {
-                    btn.className = "py-2 rounded-xl border transition font-semibold " + inactiveClasses;
-                }
+                if (btn) btn.className = "py-2 rounded-xl border transition font-semibold " + inactiveClasses;
             });
 
             let targetBtn;
@@ -516,75 +507,15 @@ ${contextPrompt}`;
             else if (len === "moyenne") targetBtn = btnMedium;
             else if (len === "longue") targetBtn = btnLong;
 
-            if (targetBtn) {
-                targetBtn.className = "py-2 rounded-xl border transition font-semibold " + activeClasses;
-            }
-        }
-
-        // --- SYNTHESE VOCALE (LECTURE AUDIO) ---
-        function toggleSpeech() {
-            if (!synth) {
-                showError("La synthèse vocale n'est pas supportée par votre navigateur.");
-                return;
-            }
-
-            if (isSpeaking) {
-                synth.cancel();
-                isSpeaking = false;
-                updateSpeechButton(false);
-            } else {
-                const textToSpeak = document.getElementById("story-content").innerText;
-                if (!textToSpeak || textToSpeak.trim() === "") return;
-
-                utterance = new SpeechSynthesisUtterance(textToSpeak);
-                utterance.lang = "fr-FR";
-
-                // Essai d'attribution d'une voix française disponible
-                const voices = synth.getVoices();
-                const frVoice = voices.find(v => v.lang.startsWith("fr"));
-                if (frVoice) {
-                    utterance.voice = frVoice;
-                }
-
-                utterance.onend = () => {
-                    isSpeaking = false;
-                    updateSpeechButton(false);
-                };
-
-                utterance.onerror = () => {
-                    isSpeaking = false;
-                    updateSpeechButton(false);
-                };
-
-                isSpeaking = true;
-                updateSpeechButton(true);
-                synth.speak(utterance);
-            }
-        }
-
-        function updateSpeechButton(active) {
-            const btn = document.getElementById("btn-speak");
-            if (!btn) return;
-            if (active) {
-                btn.innerHTML = `<i class="fa-solid fa-volume-xmark text-lg animate-pulse"></i>`;
-                btn.classList.add("text-purple-400");
-                btn.title = "Arrêter la lecture";
-            } else {
-                btn.innerHTML = `<i class="fa-solid fa-volume-high text-lg"></i>`;
-                btn.classList.remove("text-purple-400");
-                btn.title = "Lire à haute voix";
-            }
+            if (targetBtn) targetBtn.className = "py-2 rounded-xl border transition font-semibold " + activeClasses;
         }
 
         // --- CYCLE DE JEU ---
-
-        // Lancer une nouvelle histoire
         async function startAdventure(selectedGenre) {
-            // Re-vérifier la clé avant de lancer
             userApiKey = localStorage.getItem(apiKeyStorageKey) || "";
 
             if (!userApiKey) {
-                userApiKey = prompt("Clé API Gemini requise pour lancer l'aventure.\n\n1. Allez sur le site : [https://aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)\n2. Générez une clé gratuitement.\n3. Collez-la ci-dessous :");
+                userApiKey = prompt("Clé API Gemini requise pour lancer l'aventure.\n\n1. Allez sur le site : https://aistudio.google.com/app/apikey\n2. Générez une clé gratuitement.\n3. Collez-la ci-dessous :");
                 if (userApiKey) {
                     localStorage.setItem(apiKeyStorageKey, userApiKey);
                     updateApiStatusIndicator();
@@ -595,36 +526,31 @@ ${contextPrompt}`;
             }
 
             gameState.genre = selectedGenre;
+            gameState.story_title = ""; // Reset du titre
             gameState.history = [];
             gameState.turn = 1;
             gameState.lastResult = null;
 
-            // Masquer l'écran d'accueil et afficher le jeu
             document.getElementById("screen-setup").classList.add("hidden");
             document.getElementById("screen-game").classList.remove("hidden");
             
-            // Setup l'état graphique initial du badge de genre
+            // Masque le prompt custom en attendant que l'IA génère le titre de l'histoire
             const badge = document.getElementById("game-genre-badge");
-            badge.innerText = selectedGenre;
-            adjustBadgeStyle(selectedGenre, badge);
-
-            // Générer le premier paragraphe
+            badge.innerText = "Génération du titre...";
+            
             await fetchNextStoryStep("Début de l'aventure.");
         }
 
-        // Faire progresser l'histoire sur la base du choix de l'utilisateur
         async function fetchNextStoryStep(userChoiceText) {
             showStoryLoader(true);
             document.getElementById("choices-container").innerHTML = "";
 
-            // Interrompre la synthèse vocale en cours d'une étape précédente
             if (synth && isSpeaking) {
                 synth.cancel();
                 isSpeaking = false;
                 updateSpeechButton(false);
             }
 
-            // Calcul du nombre maximal de tours par rapport à la préférence sélectionnée
             let maxTurns = 8;
             if (gameState.length === "très courte") maxTurns = 3;
             else if (gameState.length === "courte") maxTurns = 5;
@@ -633,60 +559,171 @@ ${contextPrompt}`;
 
             const currentTurnIndex = gameState.history.length + 1;
 
-            // Préparation des instructions système
-            const systemPrompt = `Tu es le Maître du Jeu d'un jeu de rôle textuel de haut niveau en français. Ton but est d'immerger le joueur dans un univers de type '${gameState.genre}'.
-            Le joueur va interagir avec tes récits par des choix cruciaux. 
+            // Nouveaux ajouts dans le prompt pour forcer le titre de l'histoire et une couleur de fond sombre adaptée
+            const systemPrompt = `Tu es le Maître du Jeu d'un jeu de rôle textuel de haut niveau en français. Ton but est d'immerger le joueur dans un univers basé sur ce contexte: '${gameState.genre}'.
+            Le joueur va interagir par des choix cruciaux. 
             Tes tâches :
-            1. Rédige une suite narrative captivante, rythmée, poignante, d'environ 2 à 3 paragraphes immersifs, ne pas édulcoré et avancer dans l'aventure.
-            2. Propose systématiquement entre 2 et 4 options de choix de jeu, chacune composée d'un 'title' dynamique (ex: "Fouiller le cadavre") et d'un 'impact' court suggérant le risque encouru. Si l'histoire se termine, tu peux ne proposer qu'une option marquant la fin.
-            3. Choisis une couleur d'ambiance 'ambient_color' et sa couleur complémentaire 'ambient_secondary' de type sombre/mystérieux qui correspond à la situation actuelle pour modifier dynamiquement l'UI du site.
-            4. TRÈS IMPORTANT : L'histoire DOIT SE TERMINER en maximum ${maxTurns} tours. 
-               - Actuellement, nous sommes au tour numéro ${currentTurnIndex} sur un total de ${maxTurns}.
-               - Si nous approchons ou atteignons ce nombre de tours, dirige activement, fermement et intelligemment le scénario vers une véritable conclusion (une victoire épique, une mort tragique, une résolution, etc.).
-               - Si c'est le dernier tour (tour ${maxTurns}), écris un dénouement final mémorable et ne propose absolument aucun choix futur (laisse le tableau "choices" vide dans ton JSON).`;
+            1. Rédige une suite narrative captivante, rythmée, poignante, d'environ 2 à 3 paragraphes immersifs.
+            2. Propose systématiquement entre 2 et 4 options de choix de jeu, chacune composée d'un 'title' et d'un 'impact' court.
+            3. Choisis une couleur d'ambiance 'ambient_color' (IMPORTANT: code HEX d'une couleur TRÈS SOMBRE pour le fond du site, ex: #1a0505 pour rouge sombre ou #021a11 pour vert sombre. Cela ne doit pas éblouir) et 'ambient_secondary' (couleur d'accentuation plus claire).
+            4. Si tu ne l'as pas encore fait ou pour adapter le contexte, génère un 'story_title' court et épique qui représente cette histoire.
+            5. TRÈS IMPORTANT : L'histoire DOIT SE TERMINER en maximum ${maxTurns} tours. 
+               - Tour actuel : ${currentTurnIndex} sur ${maxTurns}.
+               - Si c'est le dernier tour (tour ${maxTurns}), écris un dénouement final mémorable et laisse le tableau "choices" vide.`;
 
-            // Construire l'historique des interactions pour le contexte de l'IA
-            let contextPrompt = `Genre de l'histoire: ${gameState.genre}.\nLongueur choisie: ${gameState.length} (Fin impérative au tour ${maxTurns}).\n`;
+            let contextPrompt = `Contexte de départ du joueur (Prompt) : ${gameState.genre}.\nLongueur choisie: ${gameState.length} (Fin impérative au tour ${maxTurns}).\n`;
             if (gameState.history.length > 0) {
                 contextPrompt += "Historique des événements précédents :\n";
                 gameState.history.forEach((step, idx) => {
                     contextPrompt += `Étape ${idx + 1} - Décision du joueur : "${step.choice}" -> Résultat de l'IA : "${step.narrative}"\n`;
                 });
             }
-            contextPrompt += `\nNouvelle décision actuelle du joueur : "${userChoiceText}". Raconte la suite de l'histoire et donne les prochains choix selon ton appréciation de la situation.`;
+            contextPrompt += `\nNouvelle décision actuelle du joueur : "${userChoiceText}".`;
 
             try {
                 const result = await fetchGeminiWithBackoff(contextPrompt, systemPrompt);
                 
-                // Mettre à jour l'historique pour la cohérence des prochains tours
                 gameState.history.push({
                     choice: userChoiceText,
                     narrative: result.text
                 });
 
-                // Mettre à jour l'UI avec les données reçues
                 renderStory(result);
                 gameState.turn++;
                 document.getElementById("turn-counter").innerText = gameState.history.length;
 
             } catch (error) {
-                console.error("Erreur complète API:", error);
-                
-                // --- GESTION INTELLIGENTE ET PROPRE DE L'ERREUR DE QUOTA ---
+                console.error("Erreur API:", error);
                 let friendlyMessage = `Erreur: ${error.message}`;
                 const errLower = error.message.toLowerCase();
-                if (errLower.includes("quota") || errLower.includes("limit") || errLower.includes("exceeded") || errLower.includes("429")) {
-                    friendlyMessage = "⚠️ Quota d'API dépassé (Crédits épuisés) !\nVous utilisez le niveau gratuit de l'API Gemini et avez temporairement atteint la limite autorisée. Veuillez patienter environ une minute avant de cliquer sur le bouton 'Réessayer la génération'.";
+                if (errLower.includes("quota") || errLower.includes("limit") || errLower.includes("429")) {
+                    friendlyMessage = "⚠️ Quota d'API dépassé ! Patientez environ une minute avant de réessayer.";
                 }
-                
                 showError(friendlyMessage);
                 showStoryLoader(false);
                 fallbackResetUI();
             }
         }
 
-        // --- SAUVEGARDE ET RESTAURATION ---
+        // --- MISE À ZONE DE L'INTERFACE GRAPHIQUE ---
+        function renderStory(storyData) {
+            showStoryLoader(false);
+            gameState.lastResult = storyData;
 
+            // Affichage dynamique du titre caché à la place du prompt
+            if (storyData.story_title) {
+                gameState.story_title = storyData.story_title;
+            }
+            const badge = document.getElementById("game-genre-badge");
+            badge.innerText = gameState.story_title || "Aventure en cours";
+            
+            if (storyData.ambient_color) {
+                badge.style.backgroundColor = `${storyData.ambient_color}`;
+                badge.style.borderColor = storyData.ambient_secondary || storyData.ambient_color;
+            }
+
+            const storyContainer = document.getElementById("story-content");
+            const formattedText = storyData.text.split('\n').filter(p => p.trim() !== '').map(p => `<p class="mb-4 text-slate-100">${p}</p>`).join('');
+            storyContainer.innerHTML = formattedText;
+
+            // True indique que nous sommes dans l'écran de l'histoire pour afficher le "grand fond de couleur"
+            applyDynamicAtmosphere(storyData.ambient_color, storyData.ambient_secondary, true);
+
+            const choicesContainer = document.getElementById("choices-container");
+            choicesContainer.innerHTML = "";
+            updateSpeechButton(false);
+
+            if (storyData.choices && storyData.choices.length > 0) {
+                saveGame();
+                storyData.choices.forEach(choice => {
+                    const card = document.createElement("button");
+                    card.onclick = () => selectChoice(choice.actionValue);
+                    card.className = "group relative text-left p-4 rounded-xl border border-white/10 bg-slate-900/60 hover:bg-white/5 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] overflow-hidden focus:outline-none flex flex-col justify-between";
+                    
+                    card.style.setProperty('--hover-border', storyData.ambient_color || '#a855f7');
+                    card.addEventListener('mouseenter', () => card.style.borderColor = storyData.ambient_color || '#a855f7');
+                    card.addEventListener('mouseleave', () => card.style.borderColor = 'rgba(255, 255, 255, 0.1)');
+
+                    card.innerHTML = `
+                        <div class="space-y-1 relative z-10">
+                            <div class="flex items-center justify-between">
+                                <h5 class="font-bold text-white group-hover:text-white transition-colors text-sm sm:text-base">${choice.title}</h5>
+                                <i class="fa-solid fa-chevron-right text-xs opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all text-slate-400"></i>
+                            </div>
+                            <p class="text-xs text-slate-400 leading-normal">${choice.impact}</p>
+                        </div>
+                        <div class="absolute bottom-0 left-0 h-[2px] w-0 bg-gradient-to-r transition-all duration-300 group-hover:w-full" style="background-image: linear-gradient(to right, ${storyData.ambient_color || '#a855f7'}, ${storyData.ambient_secondary || '#ec4899'})"></div>
+                    `;
+                    choicesContainer.appendChild(card);
+                });
+            } else {
+                 deleteSavedGame();
+                 const endCard = document.createElement("button");
+                 endCard.onclick = () => resetToHome(false);
+                 endCard.className = "col-span-full group relative text-center p-4 rounded-xl border border-white/10 bg-slate-900/60 hover:bg-white/5 transition-all duration-300";
+                 endCard.innerHTML = `<h5 class="font-bold text-white mb-1"><i class="fa-solid fa-book-open mr-2"></i>Fin du Récit</h5><p class="text-xs text-slate-400">Cliquez ici pour retourner à l'accueil et démarrer une nouvelle aventure.</p>`;
+                 choicesContainer.appendChild(endCard);
+            }
+        }
+
+        // Cette fonction gère désormais le grand fond coloré pour l'écran de jeu exclusif
+        function applyDynamicAtmosphere(primaryColor, secondaryColor, isGameScreen = false) {
+            const glowLeft = document.getElementById("ambient-glow");
+            const glowRight = document.getElementById("ambient-glow-right");
+            const storyBox = document.getElementById("story-content")?.parentElement;
+
+            // Met à jour les orbes ambiants
+            if (glowLeft && glowRight) {
+                if (primaryColor && isGameScreen) {
+                    glowLeft.style.backgroundColor = primaryColor;
+                    glowLeft.style.opacity = "0.15";
+                    if(secondaryColor) {
+                        glowRight.style.backgroundColor = secondaryColor;
+                        glowRight.style.opacity = "0.15";
+                    }
+                } else {
+                    // Reset aux couleurs par défaut de l'accueil
+                    glowLeft.style.backgroundColor = "rgba(88, 28, 135, 0.2)"; // bg-purple-900/20
+                    glowRight.style.backgroundColor = "rgba(49, 46, 129, 0.2)"; // bg-indigo-900/20
+                }
+            }
+            
+            // Met à jour les bordures de la boite de texte
+            if (storyBox) {
+                if (primaryColor && isGameScreen) {
+                    storyBox.style.borderColor = `${primaryColor}33`; 
+                    storyBox.style.boxShadow = `0 10px 30px -10px ${primaryColor}15`;
+                } else {
+                    storyBox.style.borderColor = '';
+                    storyBox.style.boxShadow = '';
+                }
+            }
+
+            // Met à jour le grand fond global uniquement si l'histoire est lancée
+            if (isGameScreen && primaryColor) {
+                document.body.style.backgroundColor = primaryColor;
+            } else {
+                // Si on retourne à l'accueil (isGameScreen est faux), on remet le bleu/gris par défaut
+                document.body.style.backgroundColor = '#020617';
+            }
+        }
+
+        function showStoryLoader(show) {
+            const loader = document.getElementById("story-loader");
+            const content = document.getElementById("story-content");
+            const quickActions = document.getElementById("story-quick-actions");
+            if (show) {
+                loader.classList.remove("hidden");
+                content.classList.add("hidden");
+                if (quickActions) quickActions.classList.add("hidden");
+            } else {
+                loader.classList.add("hidden");
+                content.classList.remove("hidden");
+                if (quickActions) quickActions.classList.remove("hidden");
+            }
+        }
+
+        // --- SAUVEGARDE ET RESTAURATION ---
         function saveGame() {
             localStorage.setItem(savedStoryStorageKey, JSON.stringify(gameState));
         }
@@ -695,17 +732,14 @@ ${contextPrompt}`;
             const saved = localStorage.getItem(savedStoryStorageKey);
             if (saved) {
                 gameState = JSON.parse(saved);
-                
-                // Synchroniser la sélection visuelle de longueur de sauvegarde
                 setLength(gameState.length || "moyenne");
 
-                // Transitionner vers l'écran de jeu
                 document.getElementById("screen-setup").classList.add("hidden");
                 document.getElementById("screen-game").classList.remove("hidden");
                 
                 const badge = document.getElementById("game-genre-badge");
-                badge.innerText = gameState.genre;
-                adjustBadgeStyle(gameState.genre, badge);
+                // Affiche le titre sauvegardé généré précédemment, ou une valeur de repli
+                badge.innerText = gameState.story_title || "Aventure en cours"; 
                 
                 document.getElementById("turn-counter").innerText = gameState.history.length;
                 renderStory(gameState.lastResult);
@@ -731,7 +765,7 @@ ${contextPrompt}`;
                                 </div>
                                 <div class="text-left">
                                     <h4 class="font-bold text-white text-sm">Aventure en cours</h4>
-                                    <p class="text-xs text-slate-300">${parsed.genre} — Étape ${parsed.turn} (${parsed.length || 'moyenne'})</p>
+                                    <p class="text-xs text-slate-300">${parsed.story_title || 'Sauvegarde active'} — Étape ${parsed.turn} (${parsed.length || 'moyenne'})</p>
                                 </div>
                             </div>
                             <div class="flex items-center space-x-2">
@@ -754,130 +788,65 @@ ${contextPrompt}`;
             }
         }
 
-        // --- MISE À ZONE DE L'INTERFACE GRAPHIQUE ---
+        // --- SYNTHESE VOCALE (LECTURE AUDIO) ---
+        function toggleSpeech() {
+            if (!synth) {
+                showError("La synthèse vocale n'est pas supportée par votre navigateur.");
+                return;
+            }
 
-        function renderStory(storyData) {
-            showStoryLoader(false);
-
-            // Mémoriser le dernier résultat dans l'état global
-            gameState.lastResult = storyData;
-
-            const storyContainer = document.getElementById("story-content");
-            const formattedText = storyData.text.split('\n').filter(p => p.trim() !== '').map(p => `<p class="mb-4 text-slate-100">${p}</p>`).join('');
-            storyContainer.innerHTML = formattedText;
-
-            applyDynamicAtmosphere(storyData.ambient_color, storyData.ambient_secondary);
-
-            const choicesContainer = document.getElementById("choices-container");
-            choicesContainer.innerHTML = "";
-
-            // Réinitialiser l'état visuel du bouton audio au changement de récit
-            updateSpeechButton(false);
-
-            if (storyData.choices && storyData.choices.length > 0) {
-                // Sauvegarder la progression puisqu'elle est active et non terminée
-                saveGame();
-
-                storyData.choices.forEach(choice => {
-                    const card = document.createElement("button");
-                    card.onclick = () => selectChoice(choice.actionValue);
-                    card.className = "group relative text-left p-4 rounded-xl border border-white/10 bg-slate-900/60 hover:bg-white/5 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] overflow-hidden focus:outline-none flex flex-col justify-between";
-                    
-                    card.style.setProperty('--hover-border', storyData.ambient_color || '#a855f7');
-                    card.addEventListener('mouseenter', () => card.style.borderColor = storyData.ambient_color || '#a855f7');
-                    card.addEventListener('mouseleave', () => card.style.borderColor = 'rgba(255, 255, 255, 0.1)');
-
-                    card.innerHTML = `
-                        <div class="space-y-1 relative z-10">
-                            <div class="flex items-center justify-between">
-                                <h5 class="font-bold text-white group-hover:text-white transition-colors text-sm sm:text-base">${choice.title}</h5>
-                                <i class="fa-solid fa-chevron-right text-xs opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all text-slate-400"></i>
-                            </div>
-                            <p class="text-xs text-slate-400 leading-normal">${choice.impact}</p>
-                        </div>
-                        <div class="absolute bottom-0 left-0 h-[2px] w-0 bg-gradient-to-r transition-all duration-300 group-hover:w-full" style="background-image: linear-gradient(to right, ${storyData.ambient_color || '#a855f7'}, ${storyData.ambient_secondary || '#ec4899'})"></div>
-                    `;
-                    choicesContainer.appendChild(card);
-                });
+            if (isSpeaking) {
+                synth.cancel();
+                isSpeaking = false;
+                updateSpeechButton(false);
             } else {
-                 // S'il n'y a plus de choix (Fin de l'histoire atteinte)
-                 // On vide la sauvegarde locale pour laisser place à la prochaine aventure
-                 deleteSavedGame();
+                const textToSpeak = document.getElementById("story-content").innerText;
+                if (!textToSpeak || textToSpeak.trim() === "") return;
 
-                 const endCard = document.createElement("button");
-                 endCard.onclick = () => resetToHome(false);
-                 endCard.className = "col-span-full group relative text-center p-4 rounded-xl border border-white/10 bg-slate-900/60 hover:bg-white/5 transition-all duration-300";
-                 endCard.innerHTML = `<h5 class="font-bold text-white mb-1"><i class="fa-solid fa-book-open mr-2"></i>Fin du Récit</h5><p class="text-xs text-slate-400">Cliquez ici pour retourner à l'accueil et démarrer une nouvelle aventure.</p>`;
-                 choicesContainer.appendChild(endCard);
+                utterance = new SpeechSynthesisUtterance(textToSpeak);
+                utterance.lang = "fr-FR";
+
+                const voices = synth.getVoices();
+                const frVoice = voices.find(v => v.lang.startsWith("fr"));
+                if (frVoice) utterance.voice = frVoice;
+
+                utterance.onend = () => { isSpeaking = false; updateSpeechButton(false); };
+                utterance.onerror = () => { isSpeaking = false; updateSpeechButton(false); };
+
+                isSpeaking = true;
+                updateSpeechButton(true);
+                synth.speak(utterance);
             }
         }
 
-        function applyDynamicAtmosphere(primaryColor, secondaryColor) {
-            const glowLeft = document.getElementById("ambient-glow");
-            const glowRight = document.getElementById("ambient-glow-right");
-
-            if (glowLeft && glowRight && primaryColor) {
-                glowLeft.style.backgroundColor = primaryColor;
-                glowLeft.style.opacity = "0.15";
-                if(secondaryColor) {
-                    glowRight.style.backgroundColor = secondaryColor;
-                    glowRight.style.opacity = "0.15";
-                }
-            }
-            
-            const storyBox = document.getElementById("story-content").parentElement;
-            if (storyBox && primaryColor) {
-                storyBox.style.borderColor = `${primaryColor}33`; 
-                storyBox.style.boxShadow = `0 10px 30px -10px ${primaryColor}15`;
-            }
-        }
-
-        function showStoryLoader(show) {
-            const loader = document.getElementById("story-loader");
-            const content = document.getElementById("story-content");
-            const quickActions = document.getElementById("story-quick-actions");
-            if (show) {
-                loader.classList.remove("hidden");
-                content.classList.add("hidden");
-                if (quickActions) quickActions.classList.add("hidden");
+        function updateSpeechButton(active) {
+            const btn = document.getElementById("btn-speak");
+            if (!btn) return;
+            if (active) {
+                btn.innerHTML = `<i class="fa-solid fa-volume-xmark text-lg animate-pulse"></i>`;
+                btn.classList.add("text-purple-400");
+                btn.title = "Arrêter la lecture";
             } else {
-                loader.classList.add("hidden");
-                content.classList.remove("hidden");
-                if (quickActions) quickActions.classList.remove("hidden");
-            }
-        }
-
-        function adjustBadgeStyle(genre, badgeElement) {
-            badgeElement.className = "px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider text-white";
-            if (genre.includes("Horreur")) {
-                badgeElement.classList.add("bg-red-950", "border", "border-red-500/40");
-            } else if (genre.includes("Fantasy")) {
-                badgeElement.classList.add("bg-purple-950", "border", "border-purple-500/40");
-            } else if (genre.includes("SF") || genre.includes("Cyber")) {
-                badgeElement.classList.add("bg-cyan-950", "border", "border-cyan-500/40");
-            } else {
-                badgeElement.classList.add("bg-indigo-950", "border", "border-indigo-500/40");
+                btn.innerHTML = `<i class="fa-solid fa-volume-high text-lg"></i>`;
+                btn.classList.remove("text-purple-400");
+                btn.title = "Lire à haute voix";
             }
         }
 
         // --- ACTIONS UTILISATEUR ---
-
         function selectGenre(genreName) {
             startAdventure(genreName);
         }
 
-        // --- ONBOARDING AUTOMATIQUE ---
-        // Cette fonction ouvre de manière élégante le modal de clé API si aucune clé n'est configurée au départ
         function checkOnboarding() {
-            if (!userApiKey) {
-                openApiModal();
-            }
+            if (!userApiKey) openApiModal();
         }
 
         function selectCustomGenre() {
             const customInput = document.getElementById("custom-genre");
             const value = customInput.value.trim();
             if (value) {
+                // Le prompt long n'apparaitra pas sur le badge grâce au nouveau système.
                 startAdventure(value);
             } else {
                 customInput.focus();
@@ -899,7 +868,6 @@ ${contextPrompt}`;
         function resetToHome(deleteSave = false) {
             closeResetModal();
             
-            // Annuler la lecture audio lors du retour au menu
             if (synth && isSpeaking) {
                 synth.cancel();
                 isSpeaking = false;
@@ -909,13 +877,13 @@ ${contextPrompt}`;
             if (deleteSave) {
                 deleteSavedGame();
             } else {
-                renderSavedGameTab(); // Juste actualiser le panneau pour montrer l'onglet
+                renderSavedGameTab();
             }
             document.getElementById("screen-game").classList.add("hidden");
             document.getElementById("screen-setup").classList.remove("hidden");
             
-            // Reset de l'ambiance par défaut
-            applyDynamicAtmosphere("#581c87", "#311042");
+            // Remet le fond à sa couleur normale lorsqu'on quitte l'histoire
+            applyDynamicAtmosphere(null, null, false);
         }
 
         function fallbackResetUI() {
@@ -931,11 +899,9 @@ ${contextPrompt}`;
         }
 
         // --- GESTION DE LA CLÉ API ---
-
         function updateApiStatusIndicator() {
             const dot = document.getElementById("api-status-dot");
             const text = document.getElementById("api-status-text");
-
             if (userApiKey) {
                 dot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500";
                 text.innerText = "Clé API Configurée";
@@ -964,46 +930,39 @@ ${contextPrompt}`;
             if (value) {
                 userApiKey = value;
                 localStorage.setItem(apiKeyStorageKey, value);
-                updateApiStatusIndicator();
-                closeApiModal();
             } else {
                 userApiKey = "";
                 localStorage.removeItem(apiKeyStorageKey);
-                updateApiStatusIndicator();
-                closeApiModal();
             }
+            updateApiStatusIndicator();
+            closeApiModal();
         }
 
         // --- ALERTES ET TOASTS ---
-
         function showError(message) {
             const toast = document.getElementById("error-toast");
             const text = document.getElementById("error-toast-text");
             text.innerText = message;
             toast.classList.remove("hidden");
-            
-            setTimeout(() => {
-                hideError();
-            }, 8000);
+            setTimeout(() => { hideError(); }, 8000);
         }
 
         function hideError() {
             document.getElementById("error-toast").classList.add("hidden");
         }
 
-        // --- CRÉATION DE L'ATMOSPHÈRE DE DÉPART AU CHARGEMENT ---
+        // --- DÉMARRAGE ---
         window.onload = function() {
             userApiKey = localStorage.getItem(apiKeyStorageKey) || "";
             updateApiStatusIndicator();
-            applyDynamicAtmosphere("#581c87", "#311042");
-            // Appliquer l'état visuel de la longueur de jeu actuelle
+            
+            // Initialise le grand fond neutre du menu par défaut
+            applyDynamicAtmosphere(null, null, false);
+            
             setLength(gameState.length || "moyenne");
-            // Vérifier et afficher l'onglet de reprise d'aventure si présent
             renderSavedGameTab();
-            // Vérification intelligente et ouverture du modal si clé manquante
             checkOnboarding();
             
-            // Chargement anticipé des voix système pour la synthèse vocale
             if (synth && synth.onvoiceschanged !== undefined) {
                 synth.onvoiceschanged = () => {};
             }
